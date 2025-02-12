@@ -1,0 +1,73 @@
+stages:
+  - test
+  - build
+  - e2e
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+api test:
+  stage: test
+  image: maven:3.9.9-amazoncorretto-21
+  cache:
+    key:
+      files:
+        - api/pom.xml
+    paths:
+      - $CI_PROJECT_DIR/.m2/repository
+  script:
+    - cd api
+    - mvn clean test
+  artifacts:
+    paths:
+      - api/target/reports/
+      - api/target/site/
+      - api/target/surefire-reports/
+
+frontend test:
+  stage: test
+  image: node:20
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/node_modules
+  script:
+    - cd frontend
+    - npm install
+    - npm run lint
+    - npm run coverage
+  artifacts:
+    paths:
+      - frontend/coverage/
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:20-dind
+  script:
+    - docker-compose build
+
+e2e tests:
+  stage: e2e
+  image: docker:latest
+  services:
+    - docker:20-dind
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
+  before_script:
+    - docker-compose up -d
+  script:
+    - EXIT_CODE=$(docker wait e2e-prod)
+    - docker-compose logs e2e
+    - docker cp e2e-prod:/app/playwright-report ./e2e/playwright-report
+    - docker cp e2e-prod:/app/test-results ./e2e/test-results
+    - if [ "$EXIT_CODE" -ne 0 ]; then echo "E2E tests failed"; exit 1; fi
+    - docker-compose down
+  after_script:
+    - docker-compose down
+  artifacts:
+    paths:
+      - e2e/playwright-report/
+      - e2e/test-results/
