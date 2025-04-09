@@ -17,7 +17,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - AZURE_BLOB_SAS_TOKEN=${AZURE_BLOB_SAS_TOKEN}
-    entrypoint: ["java", "-jar", "app.jar", "--spring.profiles.active=staging"]
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+    entrypoint: ["java", "-jar", "app.jar"]
 
   reverse-proxy:
     image: registry.gitlab.com/e-vinci/cae-projects/2025-cae-projects/cae-group-xy/reverse-proxy-prod:latest
